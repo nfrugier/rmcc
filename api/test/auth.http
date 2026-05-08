@@ -1,0 +1,27 @@
+### 1. Inscription d'un Maître de Jeu
+POST http://localhost:3000/auth/register
+Content-Type: application/json
+
+{
+  "email": "mj@rolemaster.com",
+  "password": "superpassword",
+  "role": "GM"
+}
+
+### 2. Inscription avec une erreur (mot de passe trop court)
+POST http://localhost:3000/auth/register
+Content-Type: application/json
+
+{
+  "email": "joueur@rolemaster.com",
+  "password": "123"
+}
+
+### 3. Connexion
+POST http://localhost:3000/auth/login
+Content-Type: application/json
+
+{
+  "email": "mj@rolemaster.com",
+  "password": "superpassword"
+}

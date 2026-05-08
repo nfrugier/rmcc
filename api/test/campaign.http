@@ -1,0 +1,25 @@
+### 1. Créer une campagne avec les options par défaut
+POST http://localhost:3000/campaigns
+Content-Type: application/json
+Authorization: Bearer VOTRE_TOKEN_ICI
+
+{
+  "name": "Ombres sur le monde"
+}
+
+### 2. Créer une campagne en activant les houserules (ex: Stats linéaires)
+POST http://localhost:3000/campaigns
+Content-Type: application/json
+Authorization: Bearer VOTRE_TOKEN_ICI
+
+{
+  "name": "Campagne Hardcore",
+  "options": {
+    "useLinearStats": true,
+    "useLevelLess": true
+  }
+}
+
+### 3. Lister mes campagnes (Dashboard du MJ)
+GET http://localhost:3000/campaigns
+Authorization: Bearer VOTRE_TOKEN_ICI
