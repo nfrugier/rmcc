@@ -49,6 +49,8 @@ export class CampaignsService {
     }
   }
 
-  findAllGlobal() {}
-
+  async findAllGlobal(): Promise<Campaign[]> {
+    // On charge la relation 'gm' pour afficher l'email du MJ dans le tableau admin
+    return this.campaignsRepository.find({ relations: ['gm'] });
+  }
 }

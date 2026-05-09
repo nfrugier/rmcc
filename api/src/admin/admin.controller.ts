@@ -6,6 +6,7 @@ import {
   Body,
   Param,
   UseGuards,
+  Post,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -60,5 +61,23 @@ export class AdminController {
   @Delete('characters/:id')
   deleteCharacter(@Param('id') id: string) {
     return this.adminService.deleteCharacter(id);
+  }
+
+  @Post('users')
+  @Roles(UserRole.ADMIN)
+  createUser(@Body() body: any) {
+    return this.adminService.createUser(body);
+  }
+
+  @Post('campaigns')
+  @Roles(UserRole.ADMIN)
+  createCampaign(@Body() body: any) {
+    return this.adminService.createCampaign(body);
+  }
+
+  @Post('characters')
+  @Roles(UserRole.ADMIN)
+  createCharacter(@Body() body: any) {
+    return this.adminService.createCharacter(body);
   }
 }

@@ -4,7 +4,8 @@ import { UsersService } from '../users/users.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Character } from '../characters/entities/character.entity';
-import { UserRole } from '../users/entities/user.entity';
+import { User, UserRole } from '../users/entities/user.entity';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AdminService {
@@ -13,7 +14,29 @@ export class AdminService {
     private readonly usersService: UsersService,
     @InjectRepository(Character)
     private readonly characterRepository: Repository<Character>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
   ) {}
+
+  async createUser(data: any) {
+    const hashedPassword = await bcrypt.hash(data.password, 10);
+    const user = this.userRepository.create({
+      email: data.email,
+      password_hash: hashedPassword,
+      role: data.role || UserRole.PLAYER,
+    });
+    return this.userRepository.save(user);
+  }
+
+  async createCampaign(data: { name: string; gmId: string; options?: any }) {
+    const { gmId, ...dto } = data;
+    return this.campaignsService.create(dto, gmId);
+  }
+
+  async createCharacter(data: any) {
+    const character = this.characterRepository.create(data);
+    return this.characterRepository.save(character);
+  }
 
   async getGlobalStats() {
     const allUsers = await this.usersService.findAll();

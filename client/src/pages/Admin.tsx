@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+//import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
 type Tab = 'dashboard' | 'users' | 'campaigns' | 'characters';
@@ -10,7 +10,21 @@ export default function Admin() {
     const [campaigns, setCampaigns] = useState([]);
     const [characters, setCharacters] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [showForm, setShowForm] = useState<Tab | null>(null);
+    //todo->traiter le any plus tard
+    const [formData, setFormData] = useState<any>({});
 
+
+    const handleCreate = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            await api.post(`/admin/${showForm}`, formData);
+            setShowForm(null);
+            setFormData({});
+            fetchData();
+        } catch (err) { alert(`Erreur de création : ${err}`); }
+    };
+    
     const fetchData = async () => {
         setLoading(true);
         try {
@@ -72,6 +86,54 @@ export default function Admin() {
                 <div style={tabStyle('campaigns')} onClick={() => setActiveTab('campaigns')}>Campagnes</div>
                 <div style={tabStyle('characters')} onClick={() => setActiveTab('characters')}>Personnages</div>
             </div>
+
+            <div style={{ marginBottom: '20px', textAlign: 'right' }}>
+                {activeTab !== 'dashboard' && !showForm && (
+                    <button
+                        onClick={() => setShowForm(activeTab)}
+                        style={{ padding: '10px 20px', background: '#28a745', color: 'white', border: 'none', borderRadius: '4px' }}
+                    >
+                        + Nouveau {activeTab.slice(0, -1)}
+                    </button>
+                )}
+            </div>
+
+            {/* --- FORMULAIRE DYNAMIQUE --- */}
+            {showForm && (
+                <section style={{ background: '#f1f1f1', padding: '20px', borderRadius: '8px', marginBottom: '20px' }}>
+                    <h3>Nouvel Elément : {showForm}</h3>
+                    <form onSubmit={handleCreate} style={{ display: 'grid', gap: '10px' }}>
+                        {showForm === 'users' && (
+                            <>
+                                <input placeholder="Email" onChange={e => setFormData({...formData, email: e.target.value})} required />
+                                <input type="password" placeholder="Mot de passe" onChange={e => setFormData({...formData, password: e.target.value})} required />
+                                <select onChange={e => setFormData({...formData, role: e.target.value})}>
+                                    <option value="PLAYER">PLAYER</option>
+                                    <option value="GM">GM</option>
+                                    <option value="ADMIN">ADMIN</option>
+                                </select>
+                            </>
+                        )}
+                        {showForm === 'campaigns' && (
+                            <>
+                                <input placeholder="Nom de la campagne" onChange={e => setFormData({...formData, name: e.target.value})} required />
+                                <input placeholder="ID du GM (UUID)" onChange={e => setFormData({...formData, gmId: e.target.value})} required />
+                            </>
+                        )}
+                        {showForm === 'characters' && (
+                            <>
+                                <input placeholder="Nom du personnage" onChange={e => setFormData({...formData, name: e.target.value})} required />
+                                <input placeholder="Race" onChange={e => setFormData({...formData, race: e.target.value})} />
+                                <input placeholder="Profession" onChange={e => setFormData({...formData, profession: e.target.value})} />
+                            </>
+                        )}
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                            <button type="submit" style={{ background: '#007bff', color: 'white', border: 'none', padding: '10px' }}>Enregistrer</button>
+                            <button type="button" onClick={() => setShowForm(null)} style={{ background: '#6c757d', color: 'white', border: 'none', padding: '10px' }}>Annuler</button>
+                        </div>
+                    </form>
+                </section>
+            )}
 
             {/* --- CONTENU DES ONGLETS --- */}
 
