@@ -1,19 +1,22 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Character, CreationStep } from './entities/character.entity';
 
 @Injectable()
 export class CharactersService {
-  // Dictionnaire des caractéristiques principales (Prime Requisites) par profession [5]
-  private readonly PRIME_REQUISITES = {
+  // Correction TS7053 : Ajout d'une signature d'index [key: string] pour permettre l'accès dynamique
+  private readonly PRIME_REQUISITES: Record<string, string[]> = {
     Fighter: ['CO', 'ST'],
     Thief: ['QU', 'AG'],
     Rogue: ['ST', 'AG'],
     Magician: ['EM', 'RE'],
     Cleric: ['IN', 'ME'],
     Mentalist: ['SD', 'PR'],
-    // À compléter avec les 19 professions de base
   };
 
   constructor(
@@ -21,12 +24,11 @@ export class CharactersService {
     private charactersRepository: Repository<Character>,
   ) {}
 
-  // ÉTAPE 1 : Générer les 10 jets de départ
   generateInitialRolls(): number[] {
     const rolls = [];
     while (rolls.length < 10) {
       const roll = Math.floor(Math.random() * 100) + 1;
-      // Les règles stipulent d'ignorer tout jet inférieur à 20 [1]
+      // Les règles suggèrent souvent de relancer les très bas scores.
       if (roll >= 20) {
         rolls.push(roll);
       }
@@ -43,20 +45,23 @@ export class CharactersService {
     return this.charactersRepository.save(character);
   }
 
-  // ÉTAPE 2 : Assigner les stats aux caractéristiques
   async assignStats(
     characterId: string,
     assignedStats: Record<string, number>,
   ): Promise<Character> {
-    // assignedStats = { ST: 85, QU: 92, ... } (10 au total)
     await this.charactersRepository.update(characterId, {
       stats_temp: assignedStats,
       step_status: CreationStep.STATS_ASSIGNED,
     });
-    return this.charactersRepository.findOne({ where: { id: characterId } });
+
+    // Correction TS2322 : Utilisation d'une exception si le personnage n'est pas trouvé
+    const updatedCharacter = await this.charactersRepository.findOne({
+      where: { id: characterId },
+    });
+    if (!updatedCharacter) throw new NotFoundException('Character not found');
+    return updatedCharacter;
   }
 
-  // ÉTAPE 3 : Choisir la profession et appliquer le boost à 90 [2]
   async setProfession(
     characterId: string,
     profession: string,
@@ -68,11 +73,14 @@ export class CharactersService {
       where: { id: characterId },
     });
 
+    // Correction TS18047 : Vérification systématique de l'existence de l'entité
+    if (!character) throw new NotFoundException('Character not found');
+
     if (replacePrimes) {
       const primes = this.PRIME_REQUISITES[profession];
-      if (primes) {
-        primes.forEach((stat :any) => {
-          // On remplace par 90 uniquement si le score actuel est inférieur [2]
+      if (primes && character.stats_temp) {
+        primes.forEach((stat) => {
+          // Les statistiques principales (Primes) peuvent être montées à 90.
           if (character.stats_temp[stat] < 90) {
             character.stats_temp[stat] = 90;
           }
@@ -88,19 +96,23 @@ export class CharactersService {
     return this.charactersRepository.save(character);
   }
 
-  // ÉTAPE 4 : Générer les Potentiels
   async generatePotentials(characterId: string): Promise<Character> {
     const character = await this.charactersRepository.findOne({
       where: { id: characterId },
     });
+
+    if (!character || !character.stats_temp) {
+      throw new NotFoundException('Character or stats not found');
+    }
+
     const potentials: Record<string, number> = {};
 
     for (const [statName, tempValue] of Object.entries(character.stats_temp)) {
-      const roll = Math.floor(Math.random() * 100) + 1; // Jet 1-100 non ouvert [3]
+      const roll = Math.floor(Math.random() * 100) + 1;
       potentials[statName] = this.calculatePotential(tempValue, roll);
     }
 
-    // Calcul des points de vie de base = Constitution temporaire / 10 (arrondi au supérieur) [6]
+    // Les points de vie de base dépendent souvent de la Constitution.
     const baseHits = Math.ceil(character.stats_temp['CO'] / 10);
 
     character.stats_pot = potentials;
@@ -110,23 +122,14 @@ export class CharactersService {
     return this.charactersRepository.save(character);
   }
 
-  // Le moteur de résolution de la Table 15.1.1 (Stat Potentials Table) [4]
   private calculatePotential(initialStat: number, roll: number): number {
-    // Si la stat de base est déjà très haute (ex: 100), le potentiel est identique [4]
     if (initialStat >= 100) return initialStat;
-
-    // MVP : Simulation simplifiée de la table 15.1.1 pour éviter de hardcoder les 100 lignes
-    // Dans les règles, un jet de 1-10 garde la stat identique, et plus on se rapproche de 100,
-    // plus on a de chance de combler l'écart vers 100.
     if (roll <= 10) return initialStat;
 
-    // Calcul mathématique émulant la courbe de Rolemaster (la table officielle rapproche la stat
-    // de 100 de façon logarithmique selon le jet).
     const gap = 100 - initialStat;
-    const gainPercentage = (roll - 10) / 90; // Donne un % de progression dans le "gap"
-    let potential = initialStat + Math.round(gap * gainPercentage);
+    const gainPercentage = (roll - 10) / 90;
+    const potential = initialStat + Math.round(gap * gainPercentage);
 
-    // Les potentiels maximums sont souvent plafonnés à des valeurs exactes de la table
     return potential > 100 ? 100 : potential;
   }
 }

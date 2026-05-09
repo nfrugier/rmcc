@@ -1,21 +1,23 @@
-import {
-  Injectable,
-  CanActivate,
-  ExecutionContext,
-  ForbiddenException,
-} from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+import { ROLES_KEY } from './roles.decorator';
+import { UserRole } from '../users/entities/user.entity';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
-    const request = context.switchToHttp().getRequest();
-    const user = request.user; // L'objet user a été injecté juste avant par la JwtStrategy
+  constructor(private reflector: Reflector) {}
 
-    if (user?.role !== 'ADMIN') {
-      throw new ForbiddenException(
-        'Accès refusé : espace réservé aux administrateurs.',
-      );
+  canActivate(context: ExecutionContext): boolean {
+    const requiredRoles = this.reflector.getAllAndOverride<string[]>(
+      ROLES_KEY,
+      [context.getHandler(), context.getClass()],
+    );
+
+    if (!requiredRoles) {
+      return true;
     }
-    return true; // L'accès est autorisé
+
+    const { user } = context.switchToHttp().getRequest();
+    return requiredRoles.includes(user?.role);
   }
 }

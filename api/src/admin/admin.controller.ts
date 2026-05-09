@@ -1,64 +1,64 @@
 import {
   Controller,
   Get,
-  Post,
-  Body,
   Patch,
-  Param,
   Delete,
+  Body,
+  Param,
   UseGuards,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
-import { CreateAdminDto } from './dto/create-admin.dto';
-import { UpdateAdminDto } from './dto/update-admin.dto';
-import { CampaignsService } from '../campaigns/campaigns.service';
-import { UsersService } from '../users/users.service';
-import { AuthGuard } from '@nestjs/passport';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/role.guard';
+import { Roles } from '../auth/roles.decorator';
+import { UserRole } from '../users/entities/user.entity';
 
 @Controller('admin')
-@UseGuards(AuthGuard('jwt'), RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.ADMIN)
 export class AdminController {
-  private adminService: any;
-  constructor(
-    private campaignsService: CampaignsService,
-    private usersService: UsersService,
-  ) {}
+  constructor(private readonly adminService: AdminService) {}
 
-  // Permet de tout voir (ignorer le gm_id)
-  @Get('campaigns')
-  getAllCampaigns() {
-    return this.campaignsService.findAllGlobal();
+  @Get('stats')
+  getStats() {
+    return this.adminService.getGlobalStats();
   }
 
-  // Permet de détruire une campagne
+  // USERS
+  @Get('users')
+  getUsers() {
+    return this.adminService.findAllUsers();
+  }
+
+  @Patch('users/:id/role')
+  updateRole(@Param('id') id: string, @Body('role') role: UserRole) {
+    return this.adminService.updateUserRole(id, role);
+  }
+
+  @Delete('users/:id')
+  deleteUser(@Param('id') id: string) {
+    return this.adminService.deleteUser(id);
+  }
+
+  // CAMPAIGNS
+  @Get('campaigns')
+  getCampaigns() {
+    return this.adminService.findAllCampaigns();
+  }
+
   @Delete('campaigns/:id')
   deleteCampaign(@Param('id') id: string) {
-    return this.campaignsService.remove(id);
+    return this.adminService.deleteCampaign(id);
   }
 
-  @Post()
-  create(@Body() createAdminDto: CreateAdminDto) {
-    return this.adminService.create(createAdminDto);
+  // CHARACTERS
+  @Get('characters')
+  getCharacters() {
+    return this.adminService.findAllCharacters();
   }
 
-  @Get()
-  findAll() {
-    return this.adminService.findAll();
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.adminService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateAdminDto: UpdateAdminDto) {
-    return this.adminService.update(+id, updateAdminDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.adminService.remove(+id);
+  @Delete('characters/:id')
+  deleteCharacter(@Param('id') id: string) {
+    return this.adminService.deleteCharacter(id);
   }
 }

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Campaign } from './entities/campaign.entity';
@@ -38,11 +38,17 @@ export class CampaignsService {
     });
   }
 
-  findAllGlobal() {
-    
+  async findAll(): Promise<Campaign[]> {
+    return this.campaignsRepository.find({ relations: ['gm'] });
   }
 
-  remove(id: string) {
-    
+  async remove(id: string): Promise<void> {
+    const result = await this.campaignsRepository.delete(id);
+    if (result.affected === 0) {
+      throw new NotFoundException(`Campaign with ID ${id} not found`);
+    }
   }
+
+  findAllGlobal() {}
+
 }
